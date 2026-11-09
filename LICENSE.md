@@ -1,6 +1,6 @@
 # MIT License
 
-Copyright (c) [Année] [Nom du titulaire du copyright]
+Copyright (c) 2026 Daniel Glazman
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

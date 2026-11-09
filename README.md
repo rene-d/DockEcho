@@ -2,6 +2,7 @@
 
 Your Dock, echoed on every screen. DockEcho mirrors the macOS Dock on your external
 displays (the primary display is excluded by default; there is an option in the menu bar menu).
+More details can be found on the [project home page](http://glazman.org/DockEcho).
 
 *Imagined by Daniel Glazman, created by Anthropic Claude.*
 
@@ -40,3 +41,4 @@ stacks (fan/grid), notification badges, drag and drop.
   DockEcho needs to read `~/.Trash`, which requires Full Disk Access
   (System Settings > Privacy & Security > Full Disk Access). Without it the empty icon is shown.
 - To start at login: System Settings > General > Login Items > add DockEcho.app.
+

@@ -22,7 +22,7 @@ enum WindowMover {
     private static let queue = DispatchQueue(label: "DockEcho.WindowMover", qos: .userInitiated)
     private static let messagingTimeout: Float = 0.25     // seconds, per Accessibility call
     private static let retryInterval = 0.25               // seconds
-    private static let maxAttempts = 60                   // 15 s, enough for slow launches
+    private static let maxWait: TimeInterval = 15         // enough for slow launches
 
     // Main thread only
     private static var didPrompt = false
@@ -77,7 +77,7 @@ enum WindowMover {
         dispatchPrecondition(condition: .onQueue(.main))
         guard let display = displayID(of: screen) else { return }
         let generation = newGeneration(for: pid)
-        schedule(pid: pid, display: display, generation: generation, attemptsLeft: maxAttempts)
+        schedule(pid: pid, display: display, generation: generation, deadline: Date() + maxWait)
     }
 
     private static func newGeneration(for pid: pid_t) -> Int {
@@ -86,15 +86,20 @@ enum WindowMover {
         return g
     }
 
-    private static func schedule(pid: pid_t, display: CGDirectDisplayID, generation: Int, attemptsLeft: Int) {
+    private static func schedule(pid: pid_t, display: CGDirectDisplayID, generation: Int, deadline: Date) {
         DispatchQueue.main.asyncAfter(deadline: .now() + retryInterval) {
             // Re-checked at every attempt: stale requests and a disabled option stop here.
-            guard generations[pid] == generation, isEnabled,
-                  let screen = NSScreen.screens.first(where: { displayID(of: $0) == display }) else { return }
+            // A wall-clock deadline: each attempt also spends time in Accessibility calls.
+            guard generations[pid] == generation else { return }
+            guard isEnabled, Date() < deadline,
+                  let screen = NSScreen.screens.first(where: { displayID(of: $0) == display }) else {
+                generations[pid] = nil
+                return
+            }
             attempt(pid: pid, on: screen) { outcome in
                 guard generations[pid] == generation else { return }
-                if outcome.shouldRetry && attemptsLeft > 1 {
-                    schedule(pid: pid, display: display, generation: generation, attemptsLeft: attemptsLeft - 1)
+                if outcome.shouldRetry {
+                    schedule(pid: pid, display: display, generation: generation, deadline: deadline)
                 } else {
                     generations[pid] = nil
                 }

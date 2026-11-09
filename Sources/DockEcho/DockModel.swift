@@ -182,8 +182,14 @@ enum DockActions {
                 let config = NSWorkspace.OpenConfiguration()
                 config.activates = true
                 NSWorkspace.shared.openApplication(at: url, configuration: config) { app, _ in
-                    guard thenBringWindow, let target, let pid = app?.processIdentifier else { return }
-                    DispatchQueue.main.async { WindowMover.bringWhenReady(pid: pid, to: target) }
+                    DispatchQueue.main.async {
+                        // LaunchServices only brings the key window forward. Now that the app
+                        // is active, this request is honored: bring all its windows, like the
+                        // real Dock.
+                        app?.activate(options: [.activateAllWindows])
+                        guard thenBringWindow, let target, let pid = app?.processIdentifier else { return }
+                        WindowMover.bringWhenReady(pid: pid, to: target)
+                    }
                 }
             }
 

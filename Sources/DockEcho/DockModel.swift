@@ -162,19 +162,31 @@ enum DockActions {
         NSRunningApplication.runningApplications(withBundleIdentifier: item.id).first
     }
 
-    static func activate(_ item: DockItem) {
+    /// `screen`: the display whose Dock copy was clicked; the app's window is brought there
+    /// when it has none on that display.
+    static func activate(_ item: DockItem, on screen: NSScreen? = nil) {
         switch item.kind {
         case .trash, .folder:
             NSWorkspace.shared.open(item.url)
         case .app:
+            let mover = screen.flatMap { WindowMover.isAllowed ? $0 : nil }
+            // Since macOS 14 (cooperative activation), NSRunningApplication.activate() called
+            // from an app that is not active is accepted but silently ignored, and DockEcho is
+            // never active (accessory app, non-activating panel). Going through LaunchServices
+            // works in both cases and, like the real Dock, sends a "reopen" to a running app.
+            // Move the window before activating, so the focus does not jump to the other display.
+            var placed = false
             if let app = runningApp(for: item) {
                 app.unhide()
-                app.activate(options: [.activateAllWindows])
+                if let mover { placed = WindowMover.bringIfAbsent(pid: app.processIdentifier, to: mover) }
             } else {
                 NotificationCenter.default.post(name: .dockBounce, object: item.id)
-                let config = NSWorkspace.OpenConfiguration()
-                config.activates = true
-                NSWorkspace.shared.openApplication(at: item.url, configuration: config)
+            }
+            let config = NSWorkspace.OpenConfiguration()
+            config.activates = true
+            NSWorkspace.shared.openApplication(at: item.url, configuration: config) { app, _ in
+                guard let mover, !placed, let pid = app?.processIdentifier else { return }
+                DispatchQueue.main.async { WindowMover.bringWhenReady(pid: pid, to: mover) }
             }
         case .separator, .spacer:
             break

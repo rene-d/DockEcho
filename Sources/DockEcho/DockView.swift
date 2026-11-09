@@ -402,7 +402,7 @@ final class IconsView: NSView {
         let i = index(at: convert(event.locationInWindow, from: nil))
         defer { pressed = nil }
         guard let i, i == pressed else { return }
-        DockActions.activate(items[i])
+        DockActions.activate(items[i], on: window?.screen)
     }
 
     override func menu(for event: NSEvent) -> NSMenu? {
@@ -431,7 +431,10 @@ final class IconsView: NSView {
         return menu
     }
 
-    @objc private func menuOpen(_ s: NSMenuItem) { (s.representedObject as? DockItem).map(DockActions.activate) }
+    @objc private func menuOpen(_ s: NSMenuItem) {
+        guard let item = s.representedObject as? DockItem else { return }
+        DockActions.activate(item, on: window?.screen)
+    }
     @objc private func menuReveal(_ s: NSMenuItem) {
         guard let item = s.representedObject as? DockItem else { return }
         NSWorkspace.shared.activateFileViewerSelecting([item.url])

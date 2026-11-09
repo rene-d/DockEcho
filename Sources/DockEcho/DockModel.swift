@@ -169,7 +169,7 @@ enum DockActions {
         case .trash, .folder:
             NSWorkspace.shared.open(item.url)
         case .app:
-            let mover = screen.flatMap { WindowMover.isAllowed ? $0 : nil }
+            let mover = screen.flatMap { WindowMover.isActive ? $0 : nil }
             // Since macOS 14 (cooperative activation), NSRunningApplication.activate() called
             // from an app that is not active is accepted but silently ignored, and DockEcho is
             // never active (accessory app, non-activating panel). Going through LaunchServices

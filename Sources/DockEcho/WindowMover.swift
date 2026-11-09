@@ -5,10 +5,23 @@ import ApplicationServices
 /// no visible window there. Uses the Accessibility API, so DockEcho must be allowed in
 /// System Settings › Privacy & Security › Accessibility; without it, nothing is moved.
 enum WindowMover {
+    private static let enabledKey = "openOnClickedDisplay"
     private static var didPrompt = false
 
-    /// True when DockEcho may move windows. Asks for the permission once per run.
-    static var isAllowed: Bool {
+    /// Menu bar option, off by default (the real Dock never moves windows).
+    static var isEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: enabledKey) }
+        set {
+            UserDefaults.standard.set(newValue, forKey: enabledKey)
+            if newValue { _ = isAllowed }      // ask for the permission right away
+        }
+    }
+
+    /// True when the option is on and DockEcho may move windows.
+    /// Asks for the Accessibility permission once per run.
+    static var isActive: Bool { isEnabled && isAllowed }
+
+    private static var isAllowed: Bool {
         if AXIsProcessTrusted() { return true }
         if !didPrompt {
             didPrompt = true

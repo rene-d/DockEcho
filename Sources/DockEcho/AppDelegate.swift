@@ -4,6 +4,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var controller: DockController!
     private var statusItem: NSStatusItem!
     private var primaryItem: NSMenuItem!
+    private var displayItem: NSMenuItem!
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.applicationIconImage = Logo.image(size: 512)
@@ -23,6 +24,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                                    action: #selector(togglePrimary), keyEquivalent: "")
         primaryItem.target = self
         primaryItem.state = controller.includePrimaryScreen ? .on : .off
+        displayItem = menu.addItem(withTitle: "Open Apps on DockEcho's Display",
+                                   action: #selector(toggleDisplay), keyEquivalent: "")
+        displayItem.target = self
+        displayItem.toolTip = "When an app has no window on the display you click, move its window there (requires the Accessibility permission)."
+        displayItem.state = WindowMover.isEnabled ? .on : .off
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit DockEcho", action: #selector(quit), keyEquivalent: "q").target = self
         statusItem.menu = menu
@@ -53,6 +59,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func togglePrimary() {
         controller.includePrimaryScreen.toggle()
         primaryItem.state = controller.includePrimaryScreen ? .on : .off
+    }
+
+    @objc private func toggleDisplay() {
+        WindowMover.isEnabled.toggle()
+        displayItem.state = WindowMover.isEnabled ? .on : .off
     }
 
     @objc private func quit() { NSApp.terminate(nil) }

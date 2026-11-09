@@ -169,24 +169,35 @@ enum DockActions {
         case .trash, .folder:
             NSWorkspace.shared.open(item.url)
         case .app:
-            let mover = screen.flatMap { WindowMover.isActive ? $0 : nil }
             // Since macOS 14 (cooperative activation), NSRunningApplication.activate() called
             // from an app that is not active is accepted but silently ignored, and DockEcho is
             // never active (accessory app, non-activating panel). Going through LaunchServices
             // works in both cases and, like the real Dock, sends a "reopen" to a running app.
-            // Move the window before activating, so the focus does not jump to the other display.
-            var placed = false
-            if let app = runningApp(for: item) {
-                app.unhide()
-                if let mover { placed = WindowMover.bringIfAbsent(pid: app.processIdentifier, to: mover) }
+            let running = runningApp(for: item)
+            // Target the copy that is actually running, not necessarily the one in the Dock.
+            let url = running?.bundleURL ?? item.url
+            let target = screen.flatMap { WindowMover.isActive ? $0 : nil }
+
+            func open(thenBringWindow: Bool) {
+                let config = NSWorkspace.OpenConfiguration()
+                config.activates = true
+                NSWorkspace.shared.openApplication(at: url, configuration: config) { app, _ in
+                    guard thenBringWindow, let target, let pid = app?.processIdentifier else { return }
+                    DispatchQueue.main.async { WindowMover.bringWhenReady(pid: pid, to: target) }
+                }
+            }
+
+            if let running {
+                running.unhide()
+                guard let target else { return open(thenBringWindow: false) }
+                // Move (or raise) the window before activating, so the focus does not jump
+                // to the other display.
+                WindowMover.place(pid: running.processIdentifier, on: target) { outcome in
+                    open(thenBringWindow: outcome.shouldRetry)
+                }
             } else {
                 NotificationCenter.default.post(name: .dockBounce, object: item.id)
-            }
-            let config = NSWorkspace.OpenConfiguration()
-            config.activates = true
-            NSWorkspace.shared.openApplication(at: item.url, configuration: config) { app, _ in
-                guard let mover, !placed, let pid = app?.processIdentifier else { return }
-                DispatchQueue.main.async { WindowMover.bringWhenReady(pid: pid, to: mover) }
+                open(thenBringWindow: target != nil)
             }
         case .separator, .spacer:
             break
